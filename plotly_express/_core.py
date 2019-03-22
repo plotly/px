@@ -619,7 +619,7 @@ def infer_config(args, constructor, trace_patch):
         grouped_attrs.append("marker.symbol")
 
     trace_patch = trace_patch.copy()
-    if "opacity" in args and not None:
+    if "opacity" in args:
         trace_patch["marker"] = dict(opacity=args["opacity"])
     if "line_group" in args:
         trace_patch["mode"] = "lines" + ("+markers+text" if args["text"] else "")

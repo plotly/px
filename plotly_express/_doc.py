@@ -92,8 +92,7 @@ docs = dict(
     ],
     color=[colref, "Values from this column are used to assign color to marks."],
     opacity=[
-        "Sets the opacity of the markers in scatter plots such as `scatter()`",
-        ",`scatter_3d`, `scatter_ternary()`, `scatter_matrix()` and `scatter_polar()`."
+        "(number, between 0 and 1) Sets the opacity for markers."
     ],
     line_dash=[
         colref,
