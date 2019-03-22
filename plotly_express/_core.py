@@ -133,8 +133,6 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                     or len(args["data_frame"][name].unique()) <= 20
                 )
             ]
-        elif k == 'opacity':
-            pass
         elif v or (trace_spec.constructor == go.Histogram and k in ["x", "y"]):
             if k == "size":
                 if "marker" not in result:
@@ -569,7 +567,7 @@ def one_group(x):
 
 def infer_config(args, constructor, trace_patch):
     attrables = (
-        ["x", "y", "z", "a", "b", "c", "r", "theta", "size", "opacity"]
+        ["x", "y", "z", "a", "b", "c", "r", "theta", "size"]
         + ["dimensions", "hover_name", "text", "error_x", "error_x_minus"]
         + ["error_y", "error_y_minus", "error_z", "error_z_minus"]
         + ["lat", "lon", "locations", "animation_group"]
