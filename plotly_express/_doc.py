@@ -91,6 +91,11 @@ docs = dict(
         "Ignored if `error_z` is `None`.",
     ],
     color=[colref, "Values from this column are used to assign color to marks."],
+    opacity=[
+        colref,
+        "Sets the opacity of the markers in scatter plots such as `scatter()`",
+        ",`scatter_3d`, `scatter_ternary()`, `scatter_matrix()` and `scatter_polar()`."
+    ],
     line_dash=[
         colref,
         "Values from this column are used to assign dash-patterns to lines.",

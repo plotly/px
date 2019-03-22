@@ -133,6 +133,8 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                     or len(args["data_frame"][name].unique()) <= 20
                 )
             ]
+        elif k == 'opacity':
+            pass
         elif v or (trace_spec.constructor == go.Histogram and k in ["x", "y"]):
             if k == "size":
                 if "marker" not in result:
@@ -141,7 +143,6 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                 result["marker"]["sizemode"] = "area"
                 result["marker"]["sizeref"] = sizeref
                 mapping_labels.append(("%s=%%{%s}" % (v_label, "marker.size"), None))
-
             elif k == "trendline":
                 if v in ["ols", "lowess"] and args["x"] and args["y"] and len(g) > 1:
                     import statsmodels.api as sm
@@ -568,7 +569,7 @@ def one_group(x):
 
 def infer_config(args, constructor, trace_patch):
     attrables = (
-        ["x", "y", "z", "a", "b", "c", "r", "theta", "size"]
+        ["x", "y", "z", "a", "b", "c", "r", "theta", "size", "opacity"]
         + ["dimensions", "hover_name", "text", "error_x", "error_x_minus"]
         + ["error_y", "error_y_minus", "error_z", "error_z_minus"]
         + ["lat", "lon", "locations", "animation_group"]
@@ -620,6 +621,8 @@ def infer_config(args, constructor, trace_patch):
         grouped_attrs.append("marker.symbol")
 
     trace_patch = trace_patch.copy()
+    if "opacity" in args:
+        trace_patch["marker"] = dict(opacity=args["opacity"])
     if "line_group" in args:
         trace_patch["mode"] = "lines" + ("+markers+text" if args["text"] else "")
     elif constructor != go.Splom and (
