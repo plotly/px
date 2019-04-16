@@ -43,6 +43,7 @@ Mapping = namedtuple(
     ["show_in_trace_name", "grouper", "val_map", "sequence", "updater", "variable"],
 )
 TraceSpec = namedtuple("TraceSpec", ["constructor", "attrs", "trace_patch"])
+MappingLabel = namedtuple("MappingLabel", ["value", "show_in_legend"])
 
 
 def get_label(args, column):
@@ -140,7 +141,7 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                 result["marker"]["size"] = g[v]
                 result["marker"]["sizemode"] = "area"
                 result["marker"]["sizeref"] = sizeref
-                mapping_labels.append(("%s=%%{%s}" % (v_label, "marker.size"), None))
+                mapping_labels[v_label] = MappingLabel("%{marker.size}", None)
             elif k == "trendline":
                 if v in ["ols", "lowess"] and args["x"] and args["y"] and len(g) > 1:
                     import statsmodels.api as sm
@@ -166,15 +167,11 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                             fitted.params[0],
                         )
                         hover_header += "R<sup>2</sup>=%f<br><br>" % fitted.rsquared
-                    mapping_labels.append(
-                        ("%s=%%{%s}" % (get_label(args, args["x"]), "x"), None)
+                    mapping_labels[get_label(args, args["x"])] = MappingLabel(
+                        "%{x}", None
                     )
-                    mapping_labels.append(
-                        (
-                            "%s=%%{%s} <b>(trend)</b>"
-                            % (get_label(args, args["y"]), "y"),
-                            None,
-                        )
+                    mapping_labels[get_label(args, args["y"])] = MappingLabel(
+                        "%{y} <b>(trend)</b>", None
                     )
 
             elif k.startswith("error"):
@@ -193,7 +190,7 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                     result["z"] = g[v]
                     colorbar_container = result
                     color_letter = "z"
-                    mapping_labels.append(("%s=%%{z}" % (v_label), None))
+                    mapping_labels[v_label] = MappingLabel("%{z}", False)
                 else:
                     colorable = "marker"
                     if trace_spec.constructor in [go.Parcats, go.Parcoords]:
@@ -203,8 +200,8 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                     result[colorable]["color"] = g[v]
                     colorbar_container = result[colorable]
                     color_letter = "c"
-                    mapping_labels.append(
-                        ("%s=%%{%s.color}" % (v_label, colorable), None)
+                    mapping_labels[v_label] = MappingLabel(
+                        "%%{%s.color}" % colorable, False
                     )
                 d = len(args["color_continuous_scale"]) - 1
                 colorbar_container["colorscale"] = [
@@ -222,19 +219,22 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                 result["ids"] = g[v]
             elif k == "locations":
                 result[k] = g[v]
-                mapping_labels.append(("%s=%%{%s}" % (v_label, "location"), None))
+                mapping_labels[v_label] = MappingLabel("%{location}", False)
             else:
                 if v:
                     result[k] = g[v]
-                mapping_labels.append(("%s=%%{%s}" % (v_label, k), None))
+                mapping_labels[v_label] = MappingLabel("%%{%s}" % k, False)
     if trace_spec.constructor not in [
         go.Histogram2dContour,
         go.Splom,
         go.Parcoords,
         go.Parcats,
     ]:
-        hover_header += "<br>".join(s for s, t in mapping_labels) + "<extra></extra>"
-        result["hovertemplate"] = hover_header
+        result["hovertemplate"] = (
+            hover_header
+            + "<br>".join(k + "=" + v for k, (v, t) in mapping_labels.items())
+            + "<extra></extra>"
+        )
     return result
 
 
@@ -665,16 +665,17 @@ def make_figure(args, constructor, trace_patch={}, layout_patch={}):
     frames = OrderedDict()
     for group_name in group_names:
         group = grouped.get_group(group_name if len(group_name) > 1 else group_name[0])
-        mapping_labels = []
+        mapping_labels = OrderedDict()
         frame_name = ""
         for col, val, m in zip(grouper, group_name, grouped_mappings):
             if col != one_group:
-                s = ("%s=%s" % (get_label(args, col), val), m.show_in_trace_name)
-                if s not in mapping_labels:
-                    mapping_labels.append(s)
+                key = get_label(args, col)
+                label = MappingLabel(str(val), m.show_in_trace_name)
+                if key not in mapping_labels or label.show_in_legend:
+                    mapping_labels[key] = label
                 if m.variable == "animation_frame":
                     frame_name = str(val)
-        trace_name = ", ".join(s for s, t in mapping_labels if t)
+        trace_name = ", ".join(k + "=" + v for k, (v, t) in mapping_labels.items() if t)
         if frame_name not in trace_names_by_frame:
             trace_names_by_frame[frame_name] = set()
         trace_names = trace_names_by_frame[frame_name]
@@ -720,7 +721,7 @@ def make_figure(args, constructor, trace_patch={}, layout_patch={}):
                     args,
                     trace_spec,
                     group,
-                    mapping_labels[:],
+                    mapping_labels.copy(),
                     sizeref,
                     color_range=color_range if frame_name not in frames else None,
                 )
