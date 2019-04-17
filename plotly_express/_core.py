@@ -708,7 +708,11 @@ def make_figure(args, constructor, trace_patch={}, layout_patch={}):
                 )
             if trace_spec.constructor in [go.Bar, go.Violin, go.Box, go.Histogram]:
                 trace.update(alignmentgroup=True, offsetgroup=trace_name)
-            if trace_spec.constructor not in [go.Parcats, go.Parcoords]:
+            if trace_spec.constructor not in [
+                go.Parcats,
+                go.Parcoords,
+                go.Histogram2dContour,
+            ]:
                 trace.update(hoverlabel=dict(namelength=0))
             trace_names.add(trace_name)
             for i, m in enumerate(grouped_mappings):
@@ -754,4 +758,3 @@ def make_figure(args, constructor, trace_patch={}, layout_patch={}):
     configure_axes(args, constructor, fig, axes, orders)
     configure_animation_controls(args, constructor, fig)
     return fig
-
