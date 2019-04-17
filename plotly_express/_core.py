@@ -115,15 +115,9 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
         v = args[k]
         v_label = get_decorated_label(args, v, k)
         if k == "dimensions":
-            result["dimensions"] = [
-                dict(
-                    label=get_label(args, name),
-                    values=column.values,
-                    axis=dict(matches=True),
-                )
-                if trace_spec.constructor == go.Splom
-                else dict(label=get_label(args, name), values=column.values)
-                for name, column in g.iteritems()
+            dims = [
+                (name, column)
+                for (name, column) in g.iteritems()
                 if ((not v) or (name in v))
                 and (
                     trace_spec.constructor != go.Parcoords
@@ -134,7 +128,19 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                     or len(args["data_frame"][name].unique()) <= 20
                 )
             ]
-        elif v or (trace_spec.constructor == go.Histogram and k in ["x", "y"]):
+            result["dimensions"] = [
+                dict(label=get_label(args, name), values=column.values)
+                for (name, column) in dims
+            ]
+            if trace_spec.constructor == go.Splom:
+                for d in result["dimensions"]:
+                    d["axis"] = dict(matches=True)
+                mapping_labels["%{xaxis.title.text}"] = MappingLabel("%{x}", None)
+                mapping_labels["%{yaxis.title.text}"] = MappingLabel("%{y}", None)
+
+        elif v is not None or (
+            trace_spec.constructor == go.Histogram and k in ["x", "y"]
+        ):
             if k == "size":
                 if "marker" not in result:
                     result["marker"] = dict()
@@ -184,6 +190,13 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                 result["hovertext"] = g[v]
                 if hover_header == "":
                     hover_header = "<b>%{hovertext}</b><br><br>"
+            elif k == "hover_data":
+                result["customdata"] = g[v].values
+                for i, col in enumerate(v):
+                    v_label_col = get_decorated_label(args, col, None)
+                    mapping_labels[v_label_col] = MappingLabel(
+                        "%%{customdata[%d]}" % i, False
+                    )
             elif k == "color":
                 colorbar_container = None
                 if trace_spec.constructor == go.Choropleth:
@@ -224,16 +237,9 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                 if v:
                     result[k] = g[v]
                 mapping_labels[v_label] = MappingLabel("%%{%s}" % k, False)
-    if trace_spec.constructor not in [
-        go.Histogram2dContour,
-        go.Splom,
-        go.Parcoords,
-        go.Parcats,
-    ]:
-        result["hovertemplate"] = (
-            hover_header
-            + "<br>".join(k + "=" + v for k, (v, t) in mapping_labels.items())
-            + "<extra></extra>"
+    if trace_spec.constructor not in [go.Histogram2dContour, go.Parcoords, go.Parcats]:
+        result["hovertemplate"] = hover_header + "<br>".join(
+            k + "=" + v for k, (v, t) in mapping_labels.items()
         )
     return result
 
@@ -520,20 +526,20 @@ def make_trace_spec(args, constructor, attrs, trace_patch):
             elif args["marginal_" + letter] == "violin":
                 trace_spec = TraceSpec(
                     constructor=go.Violin,
-                    attrs=[letter],
+                    attrs=[letter, "hover_name", "hover_data"],
                     trace_patch=dict(scalegroup=letter, **axis_map),
                 )
             elif args["marginal_" + letter] == "box":
                 trace_spec = TraceSpec(
                     constructor=go.Box,
-                    attrs=[letter],
+                    attrs=[letter, "hover_name", "hover_data"],
                     trace_patch=dict(notched=True, **axis_map),
                 )
             elif args["marginal_" + letter] == "rug":
                 symbols = {"x": "line-ns-open", "y": "line-ew-open"}
                 trace_spec = TraceSpec(
                     constructor=go.Box,
-                    attrs=[letter],
+                    attrs=[letter, "hover_name", "hover_data"],
                     trace_patch=dict(
                         fillcolor="rgba(255,255,255,0)",
                         line={"color": "rgba(255,255,255,0)"},
@@ -568,7 +574,7 @@ def one_group(x):
 def infer_config(args, constructor, trace_patch):
     attrables = (
         ["x", "y", "z", "a", "b", "c", "r", "theta", "size"]
-        + ["dimensions", "hover_name", "text", "error_x", "error_x_minus"]
+        + ["dimensions", "hover_name", "hover_data", "text", "error_x", "error_x_minus"]
         + ["error_y", "error_y_minus", "error_z", "error_z_minus"]
         + ["lat", "lon", "locations", "animation_group"]
     )
@@ -702,6 +708,8 @@ def make_figure(args, constructor, trace_patch={}, layout_patch={}):
                 )
             if trace_spec.constructor in [go.Bar, go.Violin, go.Box, go.Histogram]:
                 trace.update(alignmentgroup=True, offsetgroup=trace_name)
+            if trace_spec.constructor not in [go.Parcats, go.Parcoords]:
+                trace.update(hoverlabel=dict(namelength=0))
             trace_names.add(trace_name)
             for i, m in enumerate(grouped_mappings):
                 val = group_name[i]

@@ -1,6 +1,7 @@
 import inspect
 
-colref = "(string, name of column in `data_frame`)"
+colref = "(string: name of column in `data_frame`)"
+colref_list = "(list of string: names of columns in `data_frame`)"
 
 # TODO contents of columns
 # TODO explain categorical
@@ -91,9 +92,7 @@ docs = dict(
         "Ignored if `error_z` is `None`.",
     ],
     color=[colref, "Values from this column are used to assign color to marks."],
-    opacity=[
-        "(number, between 0 and 1) Sets the opacity for markers."
-    ],
+    opacity=["(number, between 0 and 1) Sets the opacity for markers."],
     line_dash=[
         colref,
         "Values from this column are used to assign dash-patterns to lines.",
@@ -105,6 +104,10 @@ docs = dict(
     symbol=[colref, "Values from this column are used to assign symbols to marks."],
     size=[colref, "Values from this column are used to assign mark sizes."],
     hover_name=[colref, "Values from this column appear in bold in the hover tooltip."],
+    hover_data=[
+        colref_list,
+        "Values from these columns appear as extra data in the hover tooltip.",
+    ],
     text=[colref, "Values from this column appear in the figure as text labels."],
     locationmode=[
         "(string, one of 'ISO-3', 'USA-states', 'country names')",
