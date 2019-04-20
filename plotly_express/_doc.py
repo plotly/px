@@ -219,6 +219,10 @@ docs = dict(
         "This parameter is used to force a specific ordering of values per column.",
         "The keys of this dict should correspond to column names, and the values should be lists of strings corresponding to the specific display order desired.",
     ],
+    marginal=[
+        "(string, one of `'rug'`, `'box'`, `'violin'`, `'histogram'`)",
+        "If set, a subplot is drawn alongside the main plot, visulizing the distribution.",
+    ],
     marginal_x=[
         "(string, one of `'rug'`, `'box'`, `'violin'`, `'histogram'`)",
         "If set, a horizontal subplot is drawn above the main plot, visulizing the x-distribution.",

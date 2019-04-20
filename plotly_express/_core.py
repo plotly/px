@@ -187,16 +187,18 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                     result[error_xy] = {}
                 result[error_xy][arr] = g[v]
             elif k == "hover_name":
-                result["hovertext"] = g[v]
-                if hover_header == "":
-                    hover_header = "<b>%{hovertext}</b><br><br>"
+                if trace_spec.constructor != go.Histogram2dContour:
+                    result["hovertext"] = g[v]
+                    if hover_header == "":
+                        hover_header = "<b>%{hovertext}</b><br><br>"
             elif k == "hover_data":
-                result["customdata"] = g[v].values
-                for i, col in enumerate(v):
-                    v_label_col = get_decorated_label(args, col, None)
-                    mapping_labels[v_label_col] = MappingLabel(
-                        "%%{customdata[%d]}" % i, False
-                    )
+                if trace_spec.constructor not in [go.Histogram, go.Histogram2dContour]:
+                    result["customdata"] = g[v].values
+                    for i, col in enumerate(v):
+                        v_label_col = get_decorated_label(args, col, None)
+                        mapping_labels[v_label_col] = MappingLabel(
+                            "%%{customdata[%d]}" % i, False
+                        )
             elif k == "color":
                 colorbar_container = None
                 if trace_spec.constructor == go.Choropleth:
@@ -287,9 +289,15 @@ def set_cartesian_axis_opts(args, layout, letter, axis, orders):
 
 
 def configure_cartesian_marginal_axes(args, orders):
-    layout = dict(barmode="overlay", violinmode="overlay")
+    layout = dict()
+    if "histogram" in [args["marginal_x"], args["marginal_y"]]:
+        layout["barmode"] = "overlay"
+    if "violin" in [args["marginal_x"], args["marginal_y"]]:
+        layout["violinmode"] = "overlay"
     for letter in ["x", "y"]:
-        layout[letter + "axis1"] = dict(title=get_label(args, args[letter]))
+        layout[letter + "axis1"] = dict(
+            title=get_decorated_label(args, args[letter], letter)
+        )
         set_cartesian_axis_opts(args, layout, letter, letter + "axis1", orders)
     for letter in ["x", "y"]:
         otherletter = "x" if letter == "y" else "y"
@@ -611,7 +619,7 @@ def infer_config(args, constructor, trace_patch):
         if "color" in attrs and args["color"]:
             cmin = args["data_frame"][args["color"]].min()
             cmax = args["data_frame"][args["color"]].max()
-            if args["color_continuous_midpoint"]:
+            if args["color_continuous_midpoint"] is not None:
                 cmid = args["color_continuous_midpoint"]
                 delta = max(cmax - cmid, cmid - cmin)
                 color_range = [cmid - delta, cmid + delta]
@@ -636,6 +644,12 @@ def infer_config(args, constructor, trace_patch):
 
     if "line_shape" in args:
         trace_patch["line"] = dict(shape=args["line_shape"])
+
+    if "marginal" in args:
+        position = "marginal_x" if args["orientation"] == "v" else "marginal_y"
+        other_position = "marginal_x" if args["orientation"] == "h" else "marginal_y"
+        args[position] = args["marginal"]
+        args[other_position] = None
 
     grouped_mappings = [make_mapping(args, a) for a in grouped_attrs]
     trace_specs = make_trace_spec(args, constructor, attrs, trace_patch)
@@ -728,6 +742,14 @@ def make_figure(args, constructor, trace_patch={}, layout_patch={}):
                         or m.variable != "symbol"
                     ):
                         raise
+            if (
+                len(trace_specs) != 1
+                and trace_specs[0].constructor == go.Histogram2dContour
+                and trace_spec.constructor == go.Box
+                and trace.line.color
+            ):
+                trace.update(marker=dict(color=trace.line.color))
+
             trace.update(
                 make_trace_kwargs(
                     args,
