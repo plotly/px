@@ -191,7 +191,7 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                     result[error_xy] = {}
                 result[error_xy][arr] = g[v]
             elif k == "hover_name":
-                if trace_spec.constructor != go.Histogram2dContour:
+                if trace_spec.constructor not in [go.Histogram, go.Histogram2dContour]:
                     result["hovertext"] = g[v]
                     if hover_header == "":
                         hover_header = "<b>%{hovertext}</b><br><br>"
