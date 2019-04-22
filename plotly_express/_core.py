@@ -43,7 +43,6 @@ Mapping = namedtuple(
     ["show_in_trace_name", "grouper", "val_map", "sequence", "updater", "variable"],
 )
 TraceSpec = namedtuple("TraceSpec", ["constructor", "attrs", "trace_patch"])
-MappingLabel = namedtuple("MappingLabel", ["value", "show_in_legend"])
 
 
 def get_label(args, column):
@@ -135,8 +134,8 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
             if trace_spec.constructor == go.Splom:
                 for d in result["dimensions"]:
                     d["axis"] = dict(matches=True)
-                mapping_labels["%{xaxis.title.text}"] = MappingLabel("%{x}", None)
-                mapping_labels["%{yaxis.title.text}"] = MappingLabel("%{y}", None)
+                mapping_labels["%{xaxis.title.text}"] = "%{x}"
+                mapping_labels["%{yaxis.title.text}"] = "%{y}"
 
         elif v is not None or (
             trace_spec.constructor == go.Histogram and k in ["x", "y"]
@@ -147,7 +146,7 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                 result["marker"]["size"] = g[v]
                 result["marker"]["sizemode"] = "area"
                 result["marker"]["sizeref"] = sizeref
-                mapping_labels[v_label] = MappingLabel("%{marker.size}", None)
+                mapping_labels[v_label] = "%{marker.size}"
             elif k == "trendline":
                 if v in ["ols", "lowess"] and args["x"] and args["y"] and len(g) > 1:
                     import statsmodels.api as sm
@@ -177,12 +176,8 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                             fitted.params[0],
                         )
                         hover_header += "R<sup>2</sup>=%f<br><br>" % fitted.rsquared
-                    mapping_labels[get_label(args, args["x"])] = MappingLabel(
-                        "%{x}", None
-                    )
-                    mapping_labels[get_label(args, args["y"])] = MappingLabel(
-                        "%{y} <b>(trend)</b>", None
-                    )
+                    mapping_labels[get_label(args, args["x"])] = "%{x}"
+                    mapping_labels[get_label(args, args["y"])] = "%{y} <b>(trend)</b>"
 
             elif k.startswith("error"):
                 error_xy = k[:7]
@@ -200,16 +195,14 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                     result["customdata"] = g[v].values
                     for i, col in enumerate(v):
                         v_label_col = get_decorated_label(args, col, None)
-                        mapping_labels[v_label_col] = MappingLabel(
-                            "%%{customdata[%d]}" % i, False
-                        )
+                        mapping_labels[v_label_col] = "%%{customdata[%d]}" % i
             elif k == "color":
                 colorbar_container = None
                 if trace_spec.constructor == go.Choropleth:
                     result["z"] = g[v]
                     colorbar_container = result
                     color_letter = "z"
-                    mapping_labels[v_label] = MappingLabel("%{z}", False)
+                    mapping_labels[v_label] = "%{z}"
                 else:
                     colorable = "marker"
                     if trace_spec.constructor in [go.Parcats, go.Parcoords]:
@@ -219,9 +212,7 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                     result[colorable]["color"] = g[v]
                     colorbar_container = result[colorable]
                     color_letter = "c"
-                    mapping_labels[v_label] = MappingLabel(
-                        "%%{%s.color}" % colorable, False
-                    )
+                    mapping_labels[v_label] = "%%{%s.color}" % colorable
                 d = len(args["color_continuous_scale"]) - 1
                 colorbar_container["colorscale"] = [
                     [(1.0 * i) / (1.0 * d), x]
@@ -238,15 +229,14 @@ def make_trace_kwargs(args, trace_spec, g, mapping_labels, sizeref, color_range)
                 result["ids"] = g[v]
             elif k == "locations":
                 result[k] = g[v]
-                mapping_labels[v_label] = MappingLabel("%{location}", False)
+                mapping_labels[v_label] = "%{location}"
             else:
                 if v:
                     result[k] = g[v]
-                mapping_labels[v_label] = MappingLabel("%%{%s}" % k, False)
+                mapping_labels[v_label] = "%%{%s}" % k
     if trace_spec.constructor not in [go.Histogram2dContour, go.Parcoords, go.Parcats]:
-        result["hovertemplate"] = hover_header + "<br>".join(
-            k + "=" + v for k, (v, t) in mapping_labels.items()
-        )
+        hover_lines = [k + "=" + v for k, v in mapping_labels.items()]
+        result["hovertemplate"] = hover_header + "<br>".join(hover_lines)
     return result
 
 
@@ -690,16 +680,17 @@ def make_figure(args, constructor, trace_patch={}, layout_patch={}):
     for group_name in group_names:
         group = grouped.get_group(group_name if len(group_name) > 1 else group_name[0])
         mapping_labels = OrderedDict()
+        trace_name_labels = OrderedDict()
         frame_name = ""
         for col, val, m in zip(grouper, group_name, grouped_mappings):
             if col != one_group:
                 key = get_label(args, col)
-                label = MappingLabel(str(val), m.show_in_trace_name)
-                if key not in mapping_labels or label.show_in_legend:
-                    mapping_labels[key] = label
+                mapping_labels[key] = str(val)
+                if m.show_in_trace_name:
+                    trace_name_labels[key] = str(val)
                 if m.variable == "animation_frame":
                     frame_name = str(val)
-        trace_name = ", ".join(k + "=" + v for k, (v, t) in mapping_labels.items() if t)
+        trace_name = ", ".join(k + "=" + v for k, v in trace_name_labels.items())
         if frame_name not in trace_names_by_frame:
             trace_names_by_frame[frame_name] = set()
         trace_names = trace_names_by_frame[frame_name]
