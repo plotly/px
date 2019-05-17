@@ -669,11 +669,12 @@ def infer_config(args, constructor, trace_patch):
     )
     array_attrables = ["dimensions", "hover_data"]
     group_attrables = ["animation_frame", "facet_row", "facet_col", "line_group"]
-
+    all_attrables = attrables + group_attrables + ["color"]
+    if not has_value(args, "data_frame"):
+        build_dataframe(args, all_attrables)
     df_columns = args["data_frame"].columns
-
-    for attr in attrables + group_attrables + ["color"]:
-        if attr in args and args[attr] is not None:
+    for attr in all_attrables:
+        if has_value(args, attr):
             maybe_col_list = [args[attr]] if attr not in array_attrables else args[attr]
             for maybe_col in maybe_col_list:
                 try:
@@ -790,6 +791,28 @@ def get_orderings(args, grouper, grouped):
 
     return orders, group_names
 
+def has_value(d, key):
+    return d.get(key, None) is not None
+
+def build_dataframe(args, attrables):
+    """
+    Constructs an implicit dataframe and modifies `args` in-place.
+
+    `attrables` is a list of keys into `args`, all of whose corresponding
+    values are converted into columns of a dataframe.
+
+    Used to be support calls to plotting function that elide a dataframe argument; 
+    for example `scatter(x=[1,2], y=[3,4])`.
+    """
+    dataset_fields = {}
+    for field in attrables:
+        if not has_value(args, field):
+            continue
+        dataset_fields[field] = args[field]
+        # This sets the label of an attribute to be the name of the attribute.
+        args[field] = field  
+    args["data_frame"] = pandas.DataFrame(dataset_fields)   
+    return args 
 
 def make_figure(args, constructor, trace_patch={}, layout_patch={}):
     apply_default_cascade(args)
