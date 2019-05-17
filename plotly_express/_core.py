@@ -659,6 +659,28 @@ def apply_default_cascade(args):
         if args["color_discrete_sequence"] is None:
             args["color_discrete_sequence"] = qualitative.Plotly
 
+def has_value(collection, key):
+    return collection.get(key, None) is not None
+
+def build_dataframe(args, attrables):
+    """
+    Constructs an implicit dataframe and modifies `args` in-place.
+
+    `attrables` is a list of keys into `args`, all of whose corresponding
+    values are converted into columns of a dataframe.
+
+    Used to be support calls to plotting function that elide a dataframe argument;
+    for example `scatter(x=[1,2], y=[3,4])`.
+    """
+    data_frame_columns = {}
+    for field in attrables:
+        if not has_value(args, field):
+            continue
+        data_frame_columns[field] = args[field]
+        # This sets the label of an attribute to be the name of the attribute.
+        args[field] = field
+    args["data_frame"] = pandas.DataFrame(data_frame_columns)
+    return args
 
 def infer_config(args, constructor, trace_patch):
     attrables = (
@@ -790,29 +812,6 @@ def get_orderings(args, grouper, grouped):
             )
 
     return orders, group_names
-
-def has_value(d, key):
-    return d.get(key, None) is not None
-
-def build_dataframe(args, attrables):
-    """
-    Constructs an implicit dataframe and modifies `args` in-place.
-
-    `attrables` is a list of keys into `args`, all of whose corresponding
-    values are converted into columns of a dataframe.
-
-    Used to be support calls to plotting function that elide a dataframe argument; 
-    for example `scatter(x=[1,2], y=[3,4])`.
-    """
-    dataset_fields = {}
-    for field in attrables:
-        if not has_value(args, field):
-            continue
-        dataset_fields[field] = args[field]
-        # This sets the label of an attribute to be the name of the attribute.
-        args[field] = field  
-    args["data_frame"] = pandas.DataFrame(dataset_fields)   
-    return args 
 
 def make_figure(args, constructor, trace_patch={}, layout_patch={}):
     apply_default_cascade(args)
