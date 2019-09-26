@@ -19,7 +19,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://plotly.express/",
-    project_urls={"Github": "https://github.com/plotly/plotly_express/"},
+    project_urls={"GitHub": "https://github.com/plotly/plotly_express/"},
     author="Nicolas Kruchten",
     author_email="nicolas@plot.ly",
     license="MIT",

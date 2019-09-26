@@ -1,6 +1,5 @@
 .vscode
 *.ipynb
-.ipynb_checkpoints
 .mapbox_token
 
 
