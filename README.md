@@ -18,4 +18,4 @@ You'll have to install from the `plotly` channel with `conda install -c plotly p
 
 ## Getting Help
 
-Please join our [Community Forum](https://community.plot.ly/c/api/python) or file a [Github Issue](https://github.com/plotly/plotly.py/issues/new) if you've found a bug.
+Please join our [Community Forum](https://community.plot.ly/c/api/python) or file a [GitHub Issue](https://github.com/plotly/plotly.py/issues/new) if you've found a bug.
